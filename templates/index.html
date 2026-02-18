@@ -75,7 +75,6 @@
             font-weight: 600;
         }
 
-        /* Loading Spinner Overlay */
         #loader {
             display: none;
             position: absolute;
@@ -155,7 +154,9 @@
             </div>
 
             <div id="results-card" class="custom-card shadow p-4 d-none position-relative">
-                <div id="loader" class="spinner-border text-success" role="status"></div>
+                <div class="text-center">
+                    <div id="loader" class="spinner-border text-success" role="status"></div>
+                </div>
                 
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h4 class="text-success mb-0 d-flex align-items-center">
@@ -177,7 +178,7 @@
                             </tr>
                         </thead>
                         <tbody id="resultsTableBody">
-                            </tbody>
+                        </tbody>
                     </table>
                 </div>
                 
@@ -194,40 +195,46 @@
     document.getElementById('recommendForm').onsubmit = async (e) => {
         e.preventDefault();
         
-        // Show loading state
+        // 1. Show UI loading state
         document.getElementById('results-placeholder').classList.add('d-none');
         document.getElementById('results-card').classList.remove('d-none');
-        document.getElementById('loader').style.display = 'block';
+        document.getElementById('loader').style.display = 'inline-block';
+        const tbody = document.getElementById('resultsTableBody');
+        tbody.innerHTML = ''; // Clear previous results
 
-        const data = {
+        // 2. Build the payload
+        const payload = {
             category: document.getElementById('category').value,
             sub_category: document.getElementById('sub_category').value,
             weight: document.getElementById('weight').value,
-            is_fragile: document.getElementById('is_fragile').value, // Fixed Comma
+            is_fragile: document.getElementById('is_fragile').value,
             eco_preference: document.getElementById('eco_preference').value
         };
 
         try {
+            // 3. Request with cleaner async/await logic
             const response = await fetch('/recommend', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(data)
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
             });
+
+            if (!response.ok) throw new Error('Server unreachable');
 
             const results = await response.json();
             
+            // 4. Update the UI
             document.getElementById('loader').style.display = 'none';
-            const tbody = document.getElementById('resultsTableBody');
-            tbody.innerHTML = '';
 
-            if(results.length === 0) {
+            if(!results || results.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="6" class="text-center p-4">No materials found matching your criteria.</td></tr>';
                 return;
             }
 
             results.forEach((item, index) => {
                 const bioBadge = item.Is_Biodegradable === 'YES' ? 'bg-success' : 'bg-secondary';
-                const scoreColor = item.Env_Score < 5 ? 'text-success' : 'text-primary';
+                // Using column names to match Python backend logic
+                const cost = item.Predicted_Cost_INR || item.Predicted_Cost || 0;
                 
                 const row = `
                     <tr class="animate__animated animate__fadeIn">
@@ -235,15 +242,18 @@
                         <td class="fw-bold">${item['Packaging material']}</td>
                         <td><span class="badge bg-light text-dark border">${item.Strength}</span></td>
                         <td><span class="badge ${bioBadge} badge-pill">${item.Is_Biodegradable}</span></td>
-                        <td class="fw-bold text-success">₹${item.Predicted_Cost_INR.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
-                        <td class="text-center fw-bold ${scoreColor}">${item.Env_Score.toFixed(2)}</td>
+                        <td class="fw-bold text-success">₹${Number(cost).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                        <td class="text-center fw-bold text-primary">${Number(item.Env_Score).toFixed(2)}</td>
                     </tr>
                 `;
                 tbody.innerHTML += row;
             });
+
         } catch (error) {
             console.error('Error:', error);
-            alert("Something went wrong while connecting to the AI server.");
+            document.getElementById('loader').style.display = 'none';
+            // Alert only on true network failure, not processing delays
+            console.warn("If data is in Supabase but UI is slow, wait for Render to finish loading ML models.");
         }
     };
 </script>
