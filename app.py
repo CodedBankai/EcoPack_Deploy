@@ -5,9 +5,15 @@ import joblib
 from scipy.spatial.distance import euclidean
 
 app = Flask(__name__)
+import os
 
-# 1.DATABASE CONFIGURATION
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:R%40chit2004@localhost:33421/packaging_db'
+# 1. DATABASE CONFIGURATION
+# This tries to get the Render link first; if not found, it falls back to your local one.
+database_url = os.environ.get('DATABASE_URL')
+if database_url and database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql://", 1)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url or 'postgresql://postgres:R%40chit2004@localhost:33421/packaging_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
