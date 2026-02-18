@@ -5,6 +5,8 @@ import joblib
 from scipy.spatial.distance import euclidean
 
 app = Flask(__name__)
+# This will create the tables in Supabase automatically if they don't exist
+
 import os
 
 # 1. DATABASE CONFIGURATION
@@ -18,6 +20,9 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
+with app.app_context():
+    db.create_all()
+    
 # 2. SQl
 class ProductHistory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
