@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoPack AI | Sustainable Packaging Advisor</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    
+    <style>
+        :root {
+            --eco-green: #198754;
+            --eco-gradient: linear-gradient(135deg, #198754 0%, #0f5132 100%);
+        }
+
+        body { 
+            background-color: #f4f7f6; 
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+        .hero-bg {
+            background: var(--eco-gradient);
+            clip-path: polygon(0 0, 100% 0, 100% 85%, 0 100%);
+            padding-bottom: 100px;
+        }
+
+        .custom-card {
+            border: none;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .custom-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1) !important;
+        }
+
+        .form-control, .form-select {
+            border-radius: 10px;
+            padding: 12px;
+            border: 2px solid #eee;
+        }
+
+        .form-control:focus {
+            border-color: var(--eco-green);
+            box-shadow: none;
+        }
+
+        .btn-predict {
+            background: var(--eco-gradient);
+            border: none;
+            border-radius: 12px;
+            padding: 15px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            transition: opacity 0.3s;
+        }
+
+        .btn-predict:hover {
+            opacity: 0.9;
+            color: white;
+        }
+
+        .result-table thead {
+            background-color: #212529;
+            color: white;
+        }
+
+        .badge-pill {
+            padding: 8px 16px;
+            border-radius: 50px;
+            font-weight: 600;
+        }
+
+        /* Loading Spinner Overlay */
+        #loader {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+
+<div class="hero-bg text-white text-center pt-5 pb-5 mb-5 shadow">
+    <div class="container">
+        <h1 class="display-3 fw-bold mb-2">EcoPack <span class="text-warning">AI</span></h1>
+        <p class="fs-4 opacity-75">Intelligent Material Recommendations for Sustainable Success</p>
+    </div>
+</div>
+
+<div class="container" style="margin-top: -80px;">
+    <div class="row g-4">
+        <div class="col-lg-4">
+            <div class="custom-card shadow p-4 mb-4">
+                <h4 class="text-success mb-4 d-flex align-items-center">
+                    <i class="bi bi-sliders2-vertical me-2"></i> Input Parameters
+                </h4>
+                
+                <form id="recommendForm">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-uppercase text-muted">Product Category</label>
+                        <input type="text" id="category" class="form-control" placeholder="Electronics, Food, etc." required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-uppercase text-muted">Sub-Category</label>
+                        <input type="text" id="sub_category" class="form-control" placeholder="Smartphone, Laptop..." required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-uppercase text-muted">Product Weight (kg)</label>
+                        <div class="input-group">
+                            <input type="number" id="weight" class="form-control" step="0.01" placeholder="0.00" required>
+                            <span class="input-group-text bg-white border-start-0 text-muted">KG</span>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-bold text-uppercase text-muted">Fragile?</label>
+                            <select id="is_fragile" class="form-select">
+                                <option value="no">No</option>
+                                <option value="yes">Yes</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-bold text-uppercase text-muted">Eco-Only?</label>
+                            <select id="eco_preference" class="form-select">
+                                <option value="both">Both</option>
+                                <option value="yes">Yes</option>
+                                <option value="no">No</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-predict btn-success w-100 text-white mt-3">
+                        GENERATE ADVICE <i class="bi bi-magic ms-2"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <div id="results-placeholder" class="text-center p-5 bg-white custom-card shadow border-2 border-dashed">
+                <i class="bi bi-lightbulb text-warning display-1 mb-3"></i>
+                <h3 class="text-muted">Awaiting Input...</h3>
+                <p class="text-secondary">Enter your product details to discover the most cost-effective and eco-friendly packaging materials.</p>
+            </div>
+
+            <div id="results-card" class="custom-card shadow p-4 d-none position-relative">
+                <div id="loader" class="spinner-border text-success" role="status"></div>
+                
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h4 class="text-success mb-0 d-flex align-items-center">
+                        <i class="bi bi-graph-up-arrow me-2"></i> AI Recommendations
+                    </h4>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2">Currency: INR (₹)</span>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>#</th>
+                                <th>Material</th>
+                                <th>Strength</th>
+                                <th>Bio</th>
+                                <th>Cost (₹)</th>
+                                <th>Env Score</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultsTableBody">
+                            </tbody>
+                    </table>
+                </div>
+                
+                <div class="alert alert-info mt-3 d-flex align-items-center mb-0" role="alert">
+                    <i class="bi bi-info-circle-fill me-2 fs-5"></i>
+                    <div>The <strong>Env Score</strong> considers both Cost and Carbon Footprint. Lower is better.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('recommendForm').onsubmit = async (e) => {
+        e.preventDefault();
+        
+        // Show loading state
+        document.getElementById('results-placeholder').classList.add('d-none');
+        document.getElementById('results-card').classList.remove('d-none');
+        document.getElementById('loader').style.display = 'block';
+
+        const data = {
+            category: document.getElementById('category').value,
+            sub_category: document.getElementById('sub_category').value,
+            weight: document.getElementById('weight').value,
+            is_fragile: document.getElementById('is_fragile').value, // Fixed Comma
+            eco_preference: document.getElementById('eco_preference').value
+        };
+
+        try {
+            const response = await fetch('/recommend', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+
+            const results = await response.json();
+            
+            document.getElementById('loader').style.display = 'none';
+            const tbody = document.getElementById('resultsTableBody');
+            tbody.innerHTML = '';
+
+            if(results.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center p-4">No materials found matching your criteria.</td></tr>';
+                return;
+            }
+
+            results.forEach((item, index) => {
+                const bioBadge = item.Is_Biodegradable === 'YES' ? 'bg-success' : 'bg-secondary';
+                const scoreColor = item.Env_Score < 5 ? 'text-success' : 'text-primary';
+                
+                const row = `
+                    <tr class="animate__animated animate__fadeIn">
+                        <td class="fw-bold text-muted">${index + 1}</td>
+                        <td class="fw-bold">${item['Packaging material']}</td>
+                        <td><span class="badge bg-light text-dark border">${item.Strength}</span></td>
+                        <td><span class="badge ${bioBadge} badge-pill">${item.Is_Biodegradable}</span></td>
+                        <td class="fw-bold text-success">₹${item.Predicted_Cost_INR.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                        <td class="text-center fw-bold ${scoreColor}">${item.Env_Score.toFixed(2)}</td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+        } catch (error) {
+            console.error('Error:', error);
+            alert("Something went wrong while connecting to the AI server.");
+        }
+    };
+</script>
+
+</body>
+</html>
