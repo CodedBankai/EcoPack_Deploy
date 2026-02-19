@@ -35,11 +35,14 @@ pipeline = joblib.load('pipeline.pkl')
 rf_cost_model = joblib.load('rf_cost_model.pkl')
 xgb_co2_model = joblib.load('xgb_co2_model.pkl')
 le_cat = joblib.load('le_cat.pkl')
+le_sub = joblib.load('le_sub.pkl') 
 df = pd.read_csv('final_engineered_dataset.csv')
 
 # 5. RECOMMENDATION LOGIC
 def get_recommendations(input_category, input_subcategory, input_weight, is_fragile, eco_pref):
     input_category = input_category.strip().title()
+    input_subcategory = input_subcategory.strip().title()  # ⭐ ADD THIS
+    eco_pref = eco_pref.lower()  # ⭐ ADD THIS
     user_fragile_val = 1 if is_fragile.lower() == 'yes' else 0
 
     unique_materials = df.groupby('Packaging material').agg({
@@ -50,13 +53,29 @@ def get_recommendations(input_category, input_subcategory, input_weight, is_frag
         'Recyclability %': 'mean'
     }).reset_index()
 
-    cat_encoded = le_cat.transform([input_category])[0]
+    try:
+        cat_encoded = le_cat.transform([input_category])[0]
+        sub_encoded = le_sub.transform([input_subcategory])[0]
+    except ValueError:
+        return pd.DataFrame()
+
     sim_data = unique_materials.copy()
     sim_data['Product_Category_Encoded'] = cat_encoded
+    sim_data['Product_SubCategory_Encoded'] = sub_encoded  # ⭐ ADD
     sim_data['Weight Capacity (kg)'] = input_weight
+
     
-    features = ['Product_Category_Encoded', 'Packaging_Material_Encoded', 
-                'Strength_Encoded', 'Biodegradability score', 'Recyclability %', 'Weight Capacity (kg)']
+    features = [
+    'Product_Category_Encoded',
+    'Product_SubCategory_Encoded',
+    'Packaging_Material_Encoded', 
+    'Strength_Encoded',
+    'Biodegradability score',
+    'Recyclability %',
+    'Weight Capacity (kg)'
+    ]
+
+
     
     X_scaled = pipeline.transform(sim_data[features])
     sim_data['Predicted_Cost'] = rf_cost_model.predict(X_scaled)
@@ -65,7 +84,7 @@ def get_recommendations(input_category, input_subcategory, input_weight, is_frag
     sim_data['Env_Score'] = (sim_data['Predicted_CO2'] * 0.7) + (sim_data['Predicted_Cost'] * 0.3)
     
     if user_fragile_val == 1:
-        sim_data.loc[sim_data['Strength_Encoded'] < 3, 'Env_Score'] += 10.0
+        sim_data.loc[sim_data['Strength_Encoded'] < 3, 'Env_Score'] += 25.0
 
     sim_data['Is_Biodegradable'] = sim_data['Biodegradability score'].apply(lambda x: 'YES' if x > 0.5 else 'NO')
     if eco_pref == 'yes':
