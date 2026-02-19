@@ -47,6 +47,9 @@ The Power BI dashboard connects via DirectQuery to the Supabase database. It tra
 * **Real-time Tracking**: New recommendations appear instantly in the dashboard via DirectQuery.
 * **Insights**: Visualize the relationship between material strength and environmental impact.
 
+
+  ![EcoPack BI](PowerBI.png)
+
 ---
 
 ## 🛠️ Tech Stack
@@ -56,6 +59,11 @@ The Power BI dashboard connects via DirectQuery to the Supabase database. It tra
 * **ML Libraries**: Scikit-Learn, XGBoost, Pandas, Joblib
 * **Visualization**: Power BI
 * **Deployment**: Render (Gunicorn)
+
+---
+
+## 📊 Dashboard
+   ![EcoPack BI](Dashboard.png)
 
 ---
 
