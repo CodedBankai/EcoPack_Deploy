@@ -31,38 +31,18 @@ with app.app_context():
     db.create_all()
 
 # 4. LOAD TRAINED MODELS & DATA
-# 4. LOAD TRAINED MODELS & DATA
 pipeline = joblib.load('pipeline.pkl')
 rf_cost_model = joblib.load('rf_cost_model.pkl')
 xgb_co2_model = joblib.load('xgb_co2_model.pkl')
 le_cat = joblib.load('le_cat.pkl')
-le_sub = joblib.load('le_sub.pkl') # ADDED: Load the sub-category encoder
 df = pd.read_csv('final_engineered_dataset.csv')
 
 # 5. RECOMMENDATION LOGIC
 def get_recommendations(input_category, input_subcategory, input_weight, is_fragile, eco_pref):
     input_category = input_category.strip().title()
-    input_subcategory = input_subcategory.strip().title()
     user_fragile_val = 1 if is_fragile.lower() == 'yes' else 0
 
-    # Encode the inputs
-    try:
-        cat_encoded = le_cat.transform([input_category])[0]
-        sub_encoded = le_sub.transform([input_subcategory])[0]
-    except:
-        # Fallback if the user types something the model doesn't know
-        cat_encoded = 0 
-        sub_encoded = 0
-
-    # Step 1: Filter the dataset for the actual Product Category entered
-    # This ensures "Electronics" results don't show up for "Kitchenware"
-    filtered_df = df[df['Product Category'] == input_category]
-    
-    # If no exact match, use the whole dataset as fallback
-    if filtered_df.empty:
-        filtered_df = df
-
-    unique_materials = filtered_df.groupby('Packaging material').agg({
+    unique_materials = df.groupby('Packaging material').agg({
         'Packaging_Material_Encoded': 'first',
         'Strength_Encoded': 'first',
         'Strength': 'first',
@@ -70,12 +50,11 @@ def get_recommendations(input_category, input_subcategory, input_weight, is_frag
         'Recyclability %': 'mean'
     }).reset_index()
 
+    cat_encoded = le_cat.transform([input_category])[0]
     sim_data = unique_materials.copy()
     sim_data['Product_Category_Encoded'] = cat_encoded
-    # Note: Ensure your training features use this or remove if not in pipeline
-    sim_data['Weight Capacity (kg)'] = float(input_weight)
+    sim_data['Weight Capacity (kg)'] = input_weight
     
-    # Features must match your pipeline exactly
     features = ['Product_Category_Encoded', 'Packaging_Material_Encoded', 
                 'Strength_Encoded', 'Biodegradability score', 'Recyclability %', 'Weight Capacity (kg)']
     
@@ -83,15 +62,12 @@ def get_recommendations(input_category, input_subcategory, input_weight, is_frag
     sim_data['Predicted_Cost'] = rf_cost_model.predict(X_scaled)
     sim_data['Predicted_CO2'] = xgb_co2_model.predict(X_scaled)
     
-    # Custom scoring
     sim_data['Env_Score'] = (sim_data['Predicted_CO2'] * 0.7) + (sim_data['Predicted_Cost'] * 0.3)
     
     if user_fragile_val == 1:
         sim_data.loc[sim_data['Strength_Encoded'] < 3, 'Env_Score'] += 10.0
 
     sim_data['Is_Biodegradable'] = sim_data['Biodegradability score'].apply(lambda x: 'YES' if x > 0.5 else 'NO')
-    
-    # Filter by user preference
     if eco_pref == 'yes':
         sim_data = sim_data[sim_data['Is_Biodegradable'] == 'YES']
     elif eco_pref == 'no':
